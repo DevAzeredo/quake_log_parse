@@ -19,10 +19,15 @@ pub struct Match {
     pub id: i32,
     pub data: MatchData,
 }
+#[derive(Serialize)]
+pub struct PlayerScore {
+    pub name: String,
+    pub kills: i32,
+}
 
 pub struct LogModel {}
 impl LogModel {
-    pub fn get_matches_and_player_rank() -> (Vec<Match>, Vec<(String, i32)>) {
+    pub fn get_matches_and_player_rank() -> (Vec<Match>, Vec<PlayerScore>) {
         let mut matchs = Vec::new();
         let mut player_rank = Vec::new();
         self::process_events_matches(&mut matchs, read_log());
@@ -33,19 +38,21 @@ impl LogModel {
 }
 fn process_events_matches(matches: &mut Vec<Match>, file_content: String) {
     for line in file_content.lines() {
-        if line.contains("InitGame:") {
-            process_init_game(line, matches);
-        } else {
-            let idx = matches.len();
-            if line.contains("Kill:") {
-                process_kill_line(line, &mut matches[idx - 1].data);
+        match line {
+            s if s.contains("InitGame:") => process_init_game(s, matches),
+            s if s.contains("Kill:") => {
+                let idx = matches.len();
+                process_kill_line(s, &mut matches[idx - 1].data);
             }
-            if line.contains("ClientUserinfoChanged") {
-                process_client_changed_line(line, &mut matches[idx - 1].data);
+            s if s.contains("ClientUserinfoChanged") => {
+                let idx = matches.len();
+                process_client_changed_line(s, &mut matches[idx - 1].data);
             }
+            _ => {}
         }
     }
 }
+
 fn find_third_colon_occurrence(input: &str) -> Option<usize> {
     let mut colon_count = 0;
     for (index, char) in input.char_indices() {
@@ -147,25 +154,27 @@ fn process_kill_line(line: &str, game: &mut MatchData) {
     game.total_kills += 1;
 }
 
-fn process_ranking(matches: &mut Vec<Match>, ranking: &mut Vec<(String, i32)>) {
+pub fn process_ranking(matches: &mut Vec<Match>, ranking: &mut Vec<PlayerScore>) {
     let mut player_set: HashSet<&str> = HashSet::new();
+
     for mat in matches.iter() {
         for (player, kills) in &mat.data.kills {
             if player_set.contains(player.as_str()) {
                 // O jogador já está no ranking, atualize sua pontuação
-                if let Some(player_entry) = ranking
-                    .iter_mut()
-                    .find(|(name, _)| *name == player.as_str())
-                {
-                    player_entry.1 += kills;
+                if let Some(player_entry) = ranking.iter_mut().find(|entry| entry.name == *player) {
+                    player_entry.kills += kills;
                 }
             } else {
                 // O jogador não está no ranking, adicione-o
-                ranking.push((player.clone(), *kills));
+                ranking.push(PlayerScore {
+                    name: player.clone(),
+                    kills: *kills,
+                });
                 player_set.insert(player.as_str());
             }
         }
-        // Ordena o Vec em ordem decrescente de kills
-        ranking.sort_by(|a, b| b.1.cmp(&a.1));
     }
+
+    // Ordena o Vec em ordem decrescente de kills
+    ranking.sort_by(|a, b| b.kills.cmp(&a.kills));
 }
