@@ -14,7 +14,6 @@ fn execute_choice() {
 
         println!("Select an option:");
         println!("1. Report each match and a player ranking.");
-        println!("2. Option B");
         println!("0. Exit");
 
         io::stdin()
@@ -24,14 +23,9 @@ fn execute_choice() {
         match choice.trim() {
             "1" => {
                 println!("You chose Report each match and a player ranking.");
-                if let Err(err) = LogController::report_match_and_player_rank() {
+                if let Err(err) = LogController::generate_and_render_report() {
                     println!("Error: {:?}", err);
                 }
-            }
-            "2" => {
-                println!("You chose Option B");
-                // Place your code for Option B here
-                break;
             }
             "0" => {
                 println!("Exiting the program.");

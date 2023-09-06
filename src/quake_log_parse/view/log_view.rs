@@ -6,46 +6,51 @@ use crate::quake_log_parse::model::{
 };
 pub struct LogView {}
 impl LogView {
-    /// Renders match data and player rankings to the console.
+    /// Renders game matches and player rankings to the output.
     ///
-    /// This function takes a vector of matches and a vector of player rankings,
-    /// displays the match data and the player rankings.
+    /// This function takes a vector of `Match` structs representing game matches and a vector of `PlayerScore`
+    /// structs representing player rankings. It then prints these data to the console
     ///
     /// # Arguments
     ///
-    /// * `games` - A vector of `Match` objects representing match data.
-    /// * `player_ranking` - A vector of `PlayerScore` objects representing player rankings.
+    /// * `games` - A vector of `Match` structs containing information about game matches to be rendered.
+    ///
+    /// * `player_ranking` - A vector of `PlayerScore` structs containing player rankings to be rendered.
     ///
     /// # Returns
     ///
-    /// Returns a `Result` with the following meaning:
+    /// * `Result<(), LogError>` - A `Result` indicating success (`Ok`) or an error (`Err`) if any problem
+    ///   occurs during rendering.
     ///
-    /// - `Ok(())` - Indicates that the rendering operation was successful.
-    /// - `Err(LogError)` - Indicates that an error occurred during rendering
-    pub fn render_matches_and_player_rank(
+    /// # Errors
+    ///
+    /// Returns an error of type `LogError` if there are any issues with rendering the game matches or player rankings.
+    pub fn render_report(
         games: Vec<Match>,
         player_ranking: Vec<PlayerScore>,
     ) -> Result<(), LogError> {
-        println!("Renderizando partidas e Ranking");
         render_matches(games)?;
         render_ranking(player_ranking)?;
         Ok(())
     }
 }
-/// Renders the player ranking to the console.
+/// Renders player rankings to the output in JSON format.
 ///
-/// This function takes a vector of `PlayerScore` objects and displays the player ranking.
+/// This function takes a vector of `PlayerScore` structs representing player rankings and renders
+/// them to the output in a JSON format. It prints the JSON representation to the console
 ///
 /// # Arguments
 ///
-/// * `player_ranking` - A vector of `PlayerScore` objects representing player rankings.
+/// * `player_ranking` - A vector of `PlayerScore` structs containing player rankings to be rendered.
 ///
 /// # Returns
 ///
-/// Returns a `Result` with the following meaning:
+/// * `Result<(), LogError>` - A `Result` indicating success (`Ok`) or an error (`Err`) if any problem
+///   occurs during rendering.
 ///
-/// - `Ok(())` - Indicates that the rendering operation was successful.
-/// - `Err(LogError)` - Indicates that an error occurred during rendering.
+/// # Errors
+///
+/// Returns an error of type `LogError` if there are any issues with rendering the player rankings.
 fn render_ranking(player_ranking: Vec<PlayerScore>) -> Result<(), LogError> {
     let ranking: Vec<_> = player_ranking
         .iter()
@@ -54,24 +59,28 @@ fn render_ranking(player_ranking: Vec<PlayerScore>) -> Result<(), LogError> {
 
     println!(
         "{}",
-        serde_json::to_string_pretty(&json!({ "Player Ranking": ranking })).unwrap()
+        serde_json::to_string_pretty(&json!({ "Player Ranking": ranking }))?
     );
     Ok(())
 }
-/// Renders the match data to the console.
+
+/// Renders game match data to the output in JSON format.
 ///
-/// This function takes a vector of `Match` objects and displays the match data.
+/// This function takes a vector of `Match` structs representing game matches and renders
+/// them prints the JSON representation to the console.
 ///
 /// # Arguments
 ///
-/// * `games` - A vector of `Match` objects representing match data.
+/// * `games` - A vector of `Match` structs containing game match data to be rendered.
 ///
 /// # Returns
 ///
-/// Returns a `Result` with the following meaning:
+/// * `Result<(), LogError>` - A `Result` indicating success (`Ok`) or an error (`Err`) if any problem
+///   occurs during rendering.
 ///
-/// - `Ok(())` - Indicates that the rendering operation was successful.
-/// - `Err(LogError)` - Indicates that an error occurred during rendering
+/// # Errors
+///
+/// Returns an error of type `LogError` if there are any issues with rendering the game match data.
 fn render_matches(games: Vec<Match>) -> Result<(), LogError> {
     let mat: Vec<_> = games
         .iter()
@@ -82,6 +91,7 @@ fn render_matches(games: Vec<Match>) -> Result<(), LogError> {
                       "total_kills": game.data.total_kills,
                         "players": game.data.players,
                         "kills": game.data.kills,
+                        "death_causes": game.data.kills_by_means,
                     })
             })
         })
@@ -89,7 +99,7 @@ fn render_matches(games: Vec<Match>) -> Result<(), LogError> {
 
     println!(
         "{}",
-        serde_json::to_string_pretty(&json!({ "matches": mat })).unwrap()
+        serde_json::to_string_pretty(&json!({ "matches": mat }))?
     );
     Ok(())
 }
