@@ -9,26 +9,37 @@ fn main() {
 }
 
 fn execute_choice() {
-    let mut choice = String::new();
+    loop {
+        let mut choice = String::new();
 
-    println!("Selecione uma opção:");
-    println!("1. Opção A");
-    println!("2. Opção B");
+        println!("Select an option:");
+        println!("1. Report each match and a player ranking.");
+        println!("2. Option B");
+        println!("0. Exit");
 
-    io::stdin()
-        .read_line(&mut choice)
-        .expect("Falha ao ler a linha");
-    match choice.trim() {
-        "1" => {
-            println!("Você escolheu a Opção A");
-            LogController::report_match_and_player_rank();
-        }
-        "2" => {
-            println!("Você escolheu a Opção B");
-            // Coloque aqui o código para a Opção B
-        }
-        _ => {
-            println!("Opção inválida");
+        io::stdin()
+            .read_line(&mut choice)
+            .expect("Failed to read the line");
+
+        match choice.trim() {
+            "1" => {
+                println!("You chose Report each match and a player ranking.");
+                if let Err(err) = LogController::report_match_and_player_rank() {
+                    println!("Error: {:?}", err);
+                }
+            }
+            "2" => {
+                println!("You chose Option B");
+                // Place your code for Option B here
+                break;
+            }
+            "0" => {
+                println!("Exiting the program.");
+                return;
+            }
+            _ => {
+                println!("Invalid option. Please try again.");
+            }
         }
     }
 }

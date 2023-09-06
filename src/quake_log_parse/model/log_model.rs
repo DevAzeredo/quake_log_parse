@@ -7,6 +7,8 @@ use std::{
 
 use serde::Serialize;
 
+use super::error::LogError;
+
 #[derive(Debug, Default, Serialize)]
 pub struct MatchData {
     pub total_kills: i32,
@@ -24,33 +26,84 @@ pub struct PlayerScore {
     pub name: String,
     pub kills: i32,
 }
-
+/// Struct containing methods for working with log data.
 pub struct LogModel {}
 impl LogModel {
-    pub fn get_matches_and_player_rank() -> (Vec<Match>, Vec<PlayerScore>) {
+    /// Retrieves match data and player rankings from log content.
+    ///
+    /// This function reads the log content, processes the events, and returns
+    /// match data and player rankings.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` with the following meaning:
+    ///
+    /// - `Ok((matches, player_rank))` - Indicates that the operation was successful,
+    ///   and it returns the extracted match data and player rankings.
+    /// - `Err(LogError)` - Indicates that an error occurred while processing the log.
+    ///   The `LogError` contains details about the encountered problem.
+    pub fn get_matches_and_player_rank() -> Result<(Vec<Match>, Vec<PlayerScore>), LogError> {
         let mut matchs = Vec::new();
         let mut player_rank = Vec::new();
-        self::process_events_matches(&mut matchs, read_log());
-        self::process_ranking(&mut matchs, &mut player_rank);
-        matchs.sort_by_key(|game| game.id);
-        (matchs, player_rank)
+        self::process_events_matches(&mut matchs, &read_log()?)?;
+        self::process_ranking(&mut matchs, &mut player_rank)?;
+        Ok((matchs, player_rank))
     }
 }
-fn process_events_matches(matches: &mut Vec<Match>, file_content: String) {
+/// Processes events from the log file and updates the list of matches.
+///
+/// This function iterates through the lines of the log file content and updates the list of matches
+/// based on the events found, such as game initialization, player kills, and client information changes.
+/// If an error occurs during event processing, the function returns a `Result` with a `LogError`
+/// indicating details about the error.
+///
+/// # Arguments
+///
+/// * `matches` - A mutable reference to a vector of `Match` representing the matches.
+/// * `file_content` - A reference to the string containing the log file content.
+///
+/// # Returns
+///
+/// Returns a `Result` with the following semantics:
+///
+/// - `Ok(())` - Indicates that event processing was successful, and the matches were updated
+///   successfully.
+/// - `Err(LogError)` - Indicates that an error occurred during event processing. The `LogError`
+///   contains details about the error, including an error description and the line where it occurred.
+
+fn process_events_matches(matches: &mut Vec<Match>, file_content: &str) -> Result<(), LogError> {
     for line in file_content.lines() {
         match line {
-            s if s.contains("InitGame:") => process_init_game(s, matches),
+            s if s.contains("InitGame:") => {
+                if let Err(err) = process_init_game(matches) {
+                    return Err(LogError::InitGameError(format!(
+                        "Erro {:?} na linha {}",
+                        err, s
+                    )));
+                }
+            }
             s if s.contains("Kill:") => {
                 let idx = matches.len();
-                process_kill_line(s, &mut matches[idx - 1].data);
+                if let Err(err) = process_kill_line(s, &mut matches[idx - 1].data) {
+                    return Err(LogError::KillError(format!(
+                        "Erro {:?} na linha {}",
+                        err, s
+                    )));
+                }
             }
             s if s.contains("ClientUserinfoChanged") => {
                 let idx = matches.len();
-                process_client_changed_line(s, &mut matches[idx - 1].data);
+                if let Err(err) = process_client_changed_line(s, &mut matches[idx - 1].data) {
+                    return Err(LogError::ClientUserinfoChangedError(format!(
+                        "Erro {:?} na linha {}",
+                        err, s
+                    )));
+                }
             }
             _ => {}
         }
     }
+    Ok(())
 }
 
 fn find_third_colon_occurrence(input: &str) -> Option<usize> {
@@ -65,50 +118,70 @@ fn find_third_colon_occurrence(input: &str) -> Option<usize> {
     }
     None
 }
-fn read_log() -> String {
-    let file_content = match read_to_string(get_log_path()) {
-        Ok(content) => content,
-        Err(err) => {
-            panic!("Erro ao ler o arquivo: {:?}", err);
-        }
-    };
-    file_content
+fn read_log() -> Result<String, LogError> {
+    match read_to_string(get_log_path()?) {
+        Ok(file_content) => Ok(file_content),
+        Err(err) => Err(LogError::ReadLogError(format!(
+            "Erro ao ler o arquivo de log: {}",
+            err
+        ))),
+    }
 }
-fn get_log_path() -> PathBuf {
+/// Retrieves the path to the log file.
+///
+/// This function obtains the path to the log file named "qgames.log" located in the same directory as the executable.
+/// If the log file does not exist, it returns a `LogError` with details about the error.
+///
+/// # Returns
+///
+/// Returns a `Result` with the following semantics:
+///
+/// - `Ok(PathBuf)` - Indicates that the log file path was successfully obtained, and it is returned as a `PathBuf`.
+/// - `Err(LogError)` - Indicates that an error occurred while obtaining the log file path. The `LogError`
+///   contains details about the error, including an error description.
+
+fn get_log_path() -> Result<PathBuf, LogError> {
     let mut current_exe = match env::current_exe() {
         Ok(path) => path,
         Err(err) => {
-            panic!("Erro ao obter o diretório do executável: {:?}", err);
+            return Err(LogError::ExePathError(format!(
+                "Erro ao obter o diretório do executavel, {}",
+                err
+            )))
         }
     };
-
-    // Remove o nome do executável para obter o diretório
     current_exe.pop();
 
     let mut path_log = current_exe.clone();
     path_log.push("qgames.log");
 
     match path_log.exists() {
-        true =>  return path_log,
-        false =>  panic!("Erro ao obter o diretório do log, favor verifique se o arquivo qgames.log está presente no diretório: {}",current_exe.to_string_lossy().to_string()),
+        true =>  return Ok(path_log),
+        false =>  Err(LogError::ReadLogError(format!("Erro ao obter o diretório do log, favor verifique se o arquivo qgames.log está presente no diretório: {}",current_exe.to_string_lossy().to_string()) )),
     }
 }
 
-fn process_init_game(line: &str, games: &mut Vec<Match>) {
-    if line.contains("InitGame:") {
-        games.push(Match {
-            id: (games.len() + 1) as i32,
-            data: MatchData::default(),
-        });
+fn process_init_game(games: &mut Vec<Match>) -> Result<(), LogError> {
+    if games.len() >= i32::MAX as usize {
+        return Err(LogError::InitGameError(
+            "Número máximo de partidas alcançado.".to_string(),
+        ));
     }
+    games.push(Match {
+        id: (games.len() + 1) as i32,
+        data: MatchData::default(),
+    });
+
+    Ok(())
 }
-fn process_client_changed_line(line: &str, game: &mut MatchData) {
+fn process_client_changed_line(line: &str, game: &mut MatchData) -> Result<(), LogError> {
     if let Some(inicio) = line.find("n\\") {
         if let Some(fim) = line.find("\\t\\") {
             let player_name = &line[inicio + 2..fim];
             game.players.insert(player_name.to_string());
         }
     }
+    Ok(())
 }
 fn parse_world_kill(line: &str, game: &mut MatchData) {
     if let Some(inicio) = line.find("killed") {
@@ -143,7 +216,7 @@ fn insert_kills_by_means(line: &str, game: &mut MatchData) {
         .and_modify(|e| *e += 1)
         .or_insert(1);
 }
-fn process_kill_line(line: &str, game: &mut MatchData) {
+fn process_kill_line(line: &str, game: &mut MatchData) -> Result<(), LogError> {
     if line.contains("<world>") {
         parse_world_kill(line, game);
         insert_kills_by_means(line, game);
@@ -152,9 +225,13 @@ fn process_kill_line(line: &str, game: &mut MatchData) {
         insert_kills_by_means(line, game);
     };
     game.total_kills += 1;
+    Ok(())
 }
 
-pub fn process_ranking(matches: &mut Vec<Match>, ranking: &mut Vec<PlayerScore>) {
+pub fn process_ranking(
+    matches: &mut Vec<Match>,
+    ranking: &mut Vec<PlayerScore>,
+) -> Result<(), LogError> {
     let mut player_set: HashSet<&str> = HashSet::new();
 
     for mat in matches.iter() {
@@ -177,4 +254,5 @@ pub fn process_ranking(matches: &mut Vec<Match>, ranking: &mut Vec<PlayerScore>)
 
     // Ordena o Vec em ordem decrescente de kills
     ranking.sort_by(|a, b| b.kills.cmp(&a.kills));
+    Ok(())
 }
