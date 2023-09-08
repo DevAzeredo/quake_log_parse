@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use quake_log_parse::{self, quake_log_parse::model::{log_model::{process_events_matches, process_init_game, process_kill_line, MatchData, insert_kills_by_means, Match, process_ranking}, error::LogError}};
     const LOG_DATA: &str = r#"6:34 InitGame: \capturelimit\8\g_maxGameClients\0\timelimit\15\fraglimit\20\dmflags\0\bot_minplayers\0\sv_allowDownload\0\sv_maxclients\16\sv_privateClients\2\g_gametype\= 0\sv_hostname\Code Miner Server\sv_minRate\0\sv_maxRate\10000\sv_minPing\0\sv_maxPing\0\sv_floodProtect\1\version\ioq3 1.36 linux-x86_64 Apr 12 2009\protocol\68\mapname\q3dm17\gamename\baseq3\g_needpass\0
 6:34 ClientUserinfoChanged: 2 n\Isgalamido\t\0\model\uriel/zael\hmodel\uriel/zael\g_redteam\\g_blueteam\\c1\5\c2\5\hc\100\w\0\l\0\tt\0\tl\0
 6:34 ClientUserinfoChanged: 3 n\Oootsimo\t\0\model\razor/id\hmodel\razor/id\g_redteam\\g_blueteam\\c1\3\c2\5\hc\100\w\0\l\0\tt\0\tl\0
@@ -28,13 +29,7 @@ mod tests {
 7:57 Kill: 7 6 7: Mal killed Zeh by MOD_ROCKET_SPLASH
 13:52 Kill: 6 7 6: Zeh killed Mal by MOD_ROCKET
 13:55 Kill: 3 4 6: Oootsimo killed Dono da Bola by MOD_ROCKET"#;
-    use crate::quake_log_parse::model::{
-        error::LogError,
-        log_model::{
-            insert_kills_by_means, process_events_matches, process_init_game, process_kill_line,
-            process_ranking, Match, MatchData,
-        },
-    };
+
     #[test]
     fn test_process_events_matches() {
         let mut matches = Vec::new();

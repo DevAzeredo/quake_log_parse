@@ -1,6 +1,6 @@
 use std::io;
 
-use quake_log_parse::controller::LogController;
+use crate::quake_log_parse::controller::LogController;
 
 mod quake_log_parse;
 
