@@ -26,6 +26,75 @@ pub struct PlayerScore {
     pub name: String,
     pub kills: i32,
 }
+#[derive(Debug, PartialEq)]
+enum MeansOfDeath {
+    ModUnknown,
+    ModShotgun,
+    ModGauntlet,
+    ModMachinegun,
+    ModGrenade,
+    ModGrenadeSplash,
+    ModRocket,
+    ModRocketSplash,
+    ModPlasma,
+    ModPlasmaSplash,
+    ModRailgun,
+    ModLightning,
+    ModBfg,
+    ModBfgSplash,
+    ModWater,
+    ModSlime,
+    ModLava,
+    ModCrush,
+    ModTelefrag,
+    ModFalling,
+    ModSuicide,
+    ModTargetLaser,
+    ModTriggerHurt,
+    ModNail,
+    ModChaingun,
+    ModProximityMine,
+    ModKamikaze,
+    ModJuiced,
+    ModGrapple,
+}
+
+impl MeansOfDeath {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "MOD_UNKNOWN" => Some(MeansOfDeath::ModUnknown),
+            "MOD_SHOTGUN" => Some(MeansOfDeath::ModShotgun),
+            "MOD_GAUNTLET" => Some(MeansOfDeath::ModGauntlet),
+            "MOD_JUICED" => Some(MeansOfDeath::ModJuiced),
+            "MOD_KAMIKAZE" => Some(MeansOfDeath::ModKamikaze),
+            "MOD_PROXIMITY_MINE" => Some(MeansOfDeath::ModProximityMine),
+            "MOD_CHAINGUN" => Some(MeansOfDeath::ModChaingun),
+            "MOD_NAIL" => Some(MeansOfDeath::ModNail),
+            "MOD_TRIGGER_HURT" => Some(MeansOfDeath::ModTriggerHurt),
+            "MOD_TARGET_LASER" => Some(MeansOfDeath::ModTargetLaser),
+            "MOD_SUICIDE" => Some(MeansOfDeath::ModSuicide),
+            "MOD_FALLING" => Some(MeansOfDeath::ModFalling),
+            "MOD_TELEFRAG" => Some(MeansOfDeath::ModTelefrag),
+            "MOD_CRUSH" => Some(MeansOfDeath::ModCrush),
+            "MOD_LAVA" => Some(MeansOfDeath::ModLava),
+            "MOD_SLIME" => Some(MeansOfDeath::ModSlime),
+            "MOD_WATER" => Some(MeansOfDeath::ModWater),
+            "MOD_BFG_SPLASH" => Some(MeansOfDeath::ModBfgSplash),
+            "MOD_BFG" => Some(MeansOfDeath::ModBfg),
+            "MOD_LIGHTNING" => Some(MeansOfDeath::ModLightning),
+            "MOD_RAILGUN" => Some(MeansOfDeath::ModRailgun),
+            "MOD_PLASMA_SPLASH" => Some(MeansOfDeath::ModPlasmaSplash),
+            "MOD_PLASMA" => Some(MeansOfDeath::ModPlasma),
+            "MOD_ROCKET_SPLASH" => Some(MeansOfDeath::ModRocketSplash),
+            "MOD_ROCKET" => Some(MeansOfDeath::ModRocket),
+            "MOD_GRENADE_SPLASH" => Some(MeansOfDeath::ModGrenadeSplash),
+            "MOD_GRENADE" => Some(MeansOfDeath::ModGrenade),
+            "MOD_MACHINEGUN" => Some(MeansOfDeath::ModMachinegun),
+            "MOD_GRAPPLE" => Some(MeansOfDeath::ModGrapple),
+            _ => None,
+        }
+    }
+}
 /// Struct containing methods for working with log data.
 pub struct LogModel {}
 impl LogModel {
@@ -82,7 +151,7 @@ impl LogModel {
 /// * An error occurs during game initialization (`process_init_game`).
 /// * An error occurs during processing a kill line (`process_kill_line`).
 /// * An error occurs during processing a client connection line (`process_client_changed_line`).
-fn process_events_matches(matches: &mut Vec<Match>, file_content: &str) -> Result<(), LogError> {
+pub fn process_events_matches(matches: &mut Vec<Match>, file_content: &str) -> Result<(), LogError> {
     for line in file_content.lines() {
         match line {
             s if s.contains("InitGame:") => {
@@ -130,7 +199,7 @@ fn process_events_matches(matches: &mut Vec<Match>, file_content: &str) -> Resul
 ///
 /// * `Option<usize>` - Some(index) if the third colon is found, where `index` is the index
 ///   of the third colon character. None is returned if the third colon is not found.
-fn find_third_colon_occurrence(input: &str) -> Option<usize> {
+pub fn find_third_colon_occurrence(input: &str) -> Option<usize> {
     let mut colon_count = 0;
     for (index, char) in input.char_indices() {
         if char == ':' {
@@ -157,7 +226,7 @@ fn find_third_colon_occurrence(input: &str) -> Option<usize> {
 /// Returns an error of type `LogError` if any of the following conditions are met:
 ///
 /// * The log file does not exist or cannot be read.
-fn read_log() -> Result<String, LogError> {
+pub fn read_log() -> Result<String, LogError> {
     match read_to_string(get_log_path()?) {
         Ok(file_content) => Ok(file_content),
         Err(err) => Err(LogError::ReadLogError(format!(
@@ -178,7 +247,7 @@ fn read_log() -> Result<String, LogError> {
 /// Returns an error of type `LogError` if any of the following conditions are met:
 ///
 /// * The log file named "qgames.log" located in the same directory as the executable does not exist.
-fn get_log_path() -> Result<PathBuf, LogError> {
+pub fn get_log_path() -> Result<PathBuf, LogError> {
     let mut current_exe = match env::current_exe() {
         Ok(path) => path,
         Err(err) => {
@@ -214,7 +283,7 @@ fn get_log_path() -> Result<PathBuf, LogError> {
 /// Returns an error of type `LogError` if any of the following conditions are met:
 ///
 /// * The maximum number of matches (i32::MAX) has been reached, and a new game cannot be initialized.
-fn process_init_game(games: &mut Vec<Match>) -> Result<(), LogError> {
+pub fn process_init_game(games: &mut Vec<Match>) -> Result<(), LogError> {
     if games.len() >= i32::MAX as usize {
         return Err(LogError::InitGameError(
             "Maximum number of matches reached.".to_string(),
@@ -245,7 +314,7 @@ fn process_init_game(games: &mut Vec<Match>) -> Result<(), LogError> {
 ///
 /// * The line does not contain the expected format, e.g., "n\player_name\t\".
 /// * The extracted player name is empty.
-fn process_client_changed_line(line: &str, game: &mut MatchData) -> Result<(), LogError> {
+pub fn process_client_changed_line(line: &str, game: &mut MatchData) -> Result<(), LogError> {
     if let Some(inicio) = line.find("n\\") {
         if let Some(fim) = line.find("\\t\\") {
             let player_name = &line[inicio + 2..fim];
@@ -282,7 +351,7 @@ fn process_client_changed_line(line: &str, game: &mut MatchData) -> Result<(), L
 /// * The keyword 'killed' is not found in the kill line.
 /// * The keyword 'by' is not found in the kill line.
 /// * The victim in the kill line is not found in the game's kill data.
-fn parse_world_kill(line: &str, game: &mut MatchData) -> Result<(), LogError> {
+pub fn parse_world_kill(line: &str, game: &mut MatchData) -> Result<(), LogError> {
     if let Some(inicio) = line.find("killed") {
         if let Some(fim) = line.find("by") {
             let victim = &line[inicio + 7..fim - 1];
@@ -325,7 +394,7 @@ fn parse_world_kill(line: &str, game: &mut MatchData) -> Result<(), LogError> {
 ///
 /// * The third colon (":") expected in the log line is not found.
 /// * The keyword "killed" is not found in the log line.
-fn parse_player_kill(line: &str, game: &mut MatchData) -> Result<(), LogError> {
+pub fn parse_player_kill(line: &str, game: &mut MatchData) -> Result<(), LogError> {
     if let Some(inicio) = find_third_colon_occurrence(line) {
         if let Some(fim) = line.find("killed") {
             let killer = &line[inicio + 2..fim - 1];
@@ -365,22 +434,34 @@ fn parse_player_kill(line: &str, game: &mut MatchData) -> Result<(), LogError> {
 ///
 /// # Errors
 ///
-/// Returns an error of type `LogError` if unable to identify the means in the log line, indicating an issue with the line's formatting.
-fn insert_kills_by_means(line: &str, game: &mut MatchData) -> Result<(), LogError> {
-    let mean = match line.split_whitespace().last() {
+/// Returns an error of type `LogError` if unable to extract the means in the log line, indicating an issue with the line's formatting.
+///
+/// Returns an error of type `LogError` if the extracted word is not a valid 'mean'.
+pub fn insert_kills_by_means(line: &str, game: &mut MatchData) -> Result<(), LogError> {
+    let last_word = match line.split_whitespace().last() {
         Some(last_word) => last_word,
         None => {
             return Err(LogError::InsertKillMeanError(format!(
-                "Unable to identify the mean in line: {}",
+                "Unable to extract the mean from line: {}",
                 line
             )))
         }
     };
 
-    game.kills_by_means
-        .entry(mean.to_string())
-        .and_modify(|e| *e += 1)
-        .or_insert(1);
+    match MeansOfDeath::from_str(last_word) {
+        Some(_) => {
+            game.kills_by_means
+                .entry(last_word.to_string())
+                .and_modify(|e| *e += 1)
+                .or_insert(1);
+        }
+        None => {
+            return Err(LogError::InsertKillMeanError(format!(
+                r#"Mean '{}' not recognized as a valid means of death: {}"#,
+                last_word, line
+            )))
+        }
+    }
 
     Ok(())
 }
@@ -408,7 +489,7 @@ fn insert_kills_by_means(line: &str, game: &mut MatchData) -> Result<(), LogErro
 ///
 /// Returns an error of type `LogError` if there are any issues with processing the kill event or updating
 /// the game data.
-fn process_kill_line(line: &str, game: &mut MatchData) -> Result<(), LogError> {
+pub fn process_kill_line(line: &str, game: &mut MatchData) -> Result<(), LogError> {
     match line {
         _ if line.contains("<world>") => {
             if let Err(err) = parse_world_kill(line, game) {
@@ -467,67 +548,4 @@ pub fn process_ranking(matches: &mut Vec<Match>, ranking: &mut Vec<PlayerScore>)
 
     // Sorts the Vec in descending order of kills.
     ranking.sort_by(|a, b| b.kills.cmp(&a.kills));
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::quake_log_parse::model::{log_model::{
-        find_third_colon_occurrence, process_init_game, process_ranking, Match, MatchData,
-    }, error::LogError};
-
-    #[test]
-    fn test_process_init_game() {
-        let mut matches = vec![];
-        let result = process_init_game(&mut matches);
-        println!("executando teste");
-        assert!(result.is_ok());
-        assert_eq!(matches.len(), 1);
-    }
-
-    #[test]
-    fn test_err_process_init_game() {
-        let mut matches = Vec::new();
-        for _ in 0..i32::MAX {
-            process_init_game(&mut matches).unwrap();
-        }
-        let result = process_init_game(&mut matches);
-        assert!(result.is_err());
-        match result {
-            Err(LogError::InitGameError(err_msg)) => {
-                assert_eq!(err_msg, "Maximum number of matches reached.")
-            }
-            _ => assert!(false, "Expected InitGameError"),
-        }
-    }
-
-    #[test]
-    fn test_process_ranking() {
-        let mut matches = vec![
-            Match {
-                id: 1,
-                data: MatchData::default(),
-            },
-            Match {
-                id: 2,
-                data: MatchData::default(),
-            },
-        ];
-        let mut ranking = vec![];
-
-        process_ranking(&mut matches, &mut ranking);
-        assert_eq!(ranking.len(), 0);
-
-        // You can add more assertions to check the ranking logic.
-    }
-    #[test]
-    fn test_find_third_colon_occurrence() {
-        let input = "one:two:three:four";
-        let result = find_third_colon_occurrence(input);
-        assert_eq!(result, Some(13));
-        let input = "one:two:three;";
-        let result = find_third_colon_occurrence(input);
-        assert!(result.is_none());
-    }
-
-    // Add more test functions for other functions here.
 }

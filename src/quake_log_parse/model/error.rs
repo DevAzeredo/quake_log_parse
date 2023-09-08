@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LogError {
     ReadLogError(String),
     ExePathError(String),
