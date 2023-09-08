@@ -31,8 +31,8 @@ mod tests {
     use crate::quake_log_parse::model::{
         error::LogError,
         log_model::{
-            find_third_colon_occurrence, insert_kills_by_means, process_events_matches,
-            process_init_game, process_kill_line, process_ranking, Match, MatchData,
+            insert_kills_by_means, process_events_matches, process_init_game, process_kill_line,
+            process_ranking, Match, MatchData,
         },
     };
     #[test]
@@ -72,9 +72,11 @@ mod tests {
     #[test]
     fn test_process_kill_line_player_kill() {
         let mut game = MatchData::default();
-        //When <world> kill a player, that player loses -1 kill score.
-        //Since <world> is not a player, it should not appear in the dictionary of kills.
-        //The counter total_kills includes player and world deaths.
+        let line = "21:42 Kill: 1022 2 22: <world> killed NonExistentPlayer by MOD_TRIGGER_HURT";
+        let result = process_kill_line(line, &mut game);
+        assert!(result.is_err());
+
+        game.players.insert("Isgalamido".to_owned());
         let line = "21:42 Kill: 1022 2 22: <world> killed Isgalamido by MOD_TRIGGER_HURT";
         let result = process_kill_line(line, &mut game);
         assert!(result.is_ok());
@@ -82,20 +84,12 @@ mod tests {
         assert_eq!(game.kills.get("Isgalamido"), Some(&-1));
         assert_ne!(game.kills.get("<world>"), Some(&1));
 
-        let mut game_2 = MatchData::default();
         let line = "22:06 Kill: 2 3 7: Isgalamido killed Mocinha by MOD_ROCKET_SPLASH";
-        let result = process_kill_line(line, &mut game_2);
+        let result = process_kill_line(line, &mut game);
         assert!(result.is_ok());
-        assert_eq!(game_2.total_kills, 1);
-        assert_eq!(game_2.kills.get("Isgalamido"), Some(&1));
-        assert_ne!(game_2.kills.get("Mocinha"), Some(&0));
-
-        let line = "2:11 Kill: 2 4 6: Dono da Bola killed Isgalamido by MOD_ROCKET";
-        let result = process_kill_line(line, &mut game_2);
-        assert!(result.is_ok());
-        assert_eq!(game_2.total_kills, 2);
-        assert_eq!(game_2.kills.get("Isgalamido"), Some(&1));
-        assert_eq!(game_2.kills.get("Dono da Bola"), Some(&1));
+        assert_eq!(game.total_kills, 2);
+        assert_eq!(game.kills.get("Isgalamido"), Some(&0));
+        assert_ne!(game.kills.get("Mocinha"), Some(&0));
 
         let line = " 21:15 ClientUserinfoChanged: 2 n\\Isgalamido\\t\\0";
         let result = process_kill_line(line, &mut game);
@@ -165,17 +159,5 @@ mod tests {
         assert_eq!(ranking[1].kills, 7);
         assert_eq!(ranking[2].name, "Player2");
         assert_eq!(ranking[2].kills, -4);
-    }
-    #[test]
-    fn test_find_third_colon_occurrence() {
-        let input = "one:two:three:four";
-        let result = find_third_colon_occurrence(input);
-        assert_eq!(result, Some(13));
-        let input = "one:two:three;";
-        let result = find_third_colon_occurrence(input);
-        assert!(result.is_none());
-        let input = "";
-        let result = find_third_colon_occurrence(input);
-        assert!(result.is_none());
     }
 }

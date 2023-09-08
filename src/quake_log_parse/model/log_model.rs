@@ -98,10 +98,10 @@ impl MeansOfDeath {
 /// Struct containing methods for working with log data.
 pub struct LogModel {}
 impl LogModel {
-    /// Retrieves game match data and player rankings from the game log.
+    /// Retrieves match data and player rankings from the matches log.
     ///
-    /// This function reads the game log file, processes its contents, and extracts information about
-    /// game matches and player rankings. It returns the collected data as a tuple containing a vector
+    /// This function reads the matches log file, processes its contents, and extracts information about
+    /// matches and player rankings. It returns the collected data as a tuple containing a vector
     /// of `Match` structs representing the list of matches and a vector of `PlayerScore` structs
     /// representing player rankings.
     ///
@@ -114,7 +114,7 @@ impl LogModel {
     ///
     /// Returns an error of type `LogError` if any of the following conditions are met:
     ///
-    /// * An error occurs while reading the game log file (`read_log()`).
+    /// * An error occurs while reading the matches log file (`read_log()`).
     ///
     /// * An error occurs during event processing (`process_events_matches`) if there are issues with
     ///   parsing and updating match data.
@@ -129,7 +129,7 @@ impl LogModel {
 
 /// Processes events in a log file and updates the list of matches.
 ///
-/// This function iterates through log file lines and handles game initialization, player kills,
+/// This function iterates through log file lines and handles match initialization, player kills,
 /// and changes in player information, updating the list of matches accordingly.
 ///
 /// # Arguments
@@ -148,24 +148,18 @@ impl LogModel {
 ///
 /// Returns an error of type `LogError` if any of the following conditions are met:
 ///
-/// * An error occurs during game initialization (`process_init_game`).
-/// * An error occurs during processing a kill line (`process_kill_line`).
+/// * An error occurs during match initialization (`process_init_game`).
 /// * An error occurs during processing a client connection line (`process_client_changed_line`).
-pub fn process_events_matches(matches: &mut Vec<Match>, file_content: &str) -> Result<(), LogError> {
+/// * An error occurs during processing a kill line (`process_kill_line`).
+pub fn process_events_matches(
+    matches: &mut Vec<Match>,
+    file_content: &str,
+) -> Result<(), LogError> {
     for line in file_content.lines() {
         match line {
             s if s.contains("InitGame:") => {
                 if let Err(err) = process_init_game(matches) {
                     return Err(LogError::InitGameError(format!(
-                        "Error {:?} on line  {}",
-                        err, s
-                    )));
-                }
-            }
-            s if s.contains("Kill:") => {
-                let idx = matches.len();
-                if let Err(err) = process_kill_line(s, &mut matches[idx - 1].data) {
-                    return Err(LogError::KillError(format!(
                         "Error {:?} on line  {}",
                         err, s
                     )));
@@ -180,36 +174,20 @@ pub fn process_events_matches(matches: &mut Vec<Match>, file_content: &str) -> R
                     )));
                 }
             }
+            s if s.contains("Kill:") => {
+                let idx = matches.len();
+                if let Err(err) = process_kill_line(s, &mut matches[idx - 1].data) {
+                    return Err(LogError::KillError(format!(
+                        "Error {:?} on line  {}",
+                        err, s
+                    )));
+                }
+            }
+
             _ => {}
         }
     }
     Ok(())
-}
-
-/// Finds the index of the third occurrence of the colon (':') character in a string.
-///
-/// This function iterates through the characters of the input string and returns the index
-/// of the third colon character found.
-///
-/// # Arguments
-///
-/// * `input` - A string in which to find the third colon occurrence.
-///
-/// # Returns
-///
-/// * `Option<usize>` - Some(index) if the third colon is found, where `index` is the index
-///   of the third colon character. None is returned if the third colon is not found.
-pub fn find_third_colon_occurrence(input: &str) -> Option<usize> {
-    let mut colon_count = 0;
-    for (index, char) in input.char_indices() {
-        if char == ':' {
-            colon_count += 1;
-            if colon_count == 3 {
-                return Some(index);
-            }
-        }
-    }
-    None
 }
 /// Reads the content of the log file and returns it as a string.
 ///
@@ -267,30 +245,30 @@ pub fn get_log_path() -> Result<PathBuf, LogError> {
         false =>  Err(LogError::ReadLogError(format!("Error while retrieving the log directory, please check if the qgames.log file is present in the directory: {}",current_exe.to_string_lossy().to_string()) )),
     }
 }
-/// Processes the initialization of a new game and adds it to the list of matches.
+/// Processes the initialization of a new match and adds it to the list of matches.
 ///
 /// # Arguments
 ///
-/// * `games` - A mutable reference to a vector of `Match` structs representing the list of matches.
+/// * `matches` - A mutable reference to a vector of `Match` structs representing the list of matches.
 ///
 /// # Returns
 ///
 /// * `Result<(), LogError>` - A `Result` indicating success (`Ok`) or an error (`Err`) if a problem
-///   is encountered during game initialization.
+///   is encountered during match initialization.
 ///
 /// # Errors
 ///
 /// Returns an error of type `LogError` if any of the following conditions are met:
 ///
-/// * The maximum number of matches (i32::MAX) has been reached, and a new game cannot be initialized.
-pub fn process_init_game(games: &mut Vec<Match>) -> Result<(), LogError> {
-    if games.len() >= i32::MAX as usize {
+/// * The maximum number of matches (i32::MAX) has been reached, and a new match cannot be initialized.
+pub fn process_init_game(matches: &mut Vec<Match>) -> Result<(), LogError> {
+    if matches.len() >= i32::MAX as usize {
         return Err(LogError::InitGameError(
             "Maximum number of matches reached.".to_string(),
         ));
     }
-    games.push(Match {
-        id: (games.len() + 1) as i32,
+    matches.push(Match {
+        id: (matches.len() + 1) as i32,
         data: MatchData::default(),
     });
 
@@ -301,7 +279,7 @@ pub fn process_init_game(games: &mut Vec<Match>) -> Result<(), LogError> {
 /// # Arguments
 ///
 /// * `line` - A string containing the log line to be parsed.
-/// * `game` - A mutable reference to the `MatchData` struct representing the game state.
+/// * `match_data` - A mutable reference to the `MatchData` struct representing the match state.
 ///
 /// # Returns
 ///
@@ -314,13 +292,13 @@ pub fn process_init_game(games: &mut Vec<Match>) -> Result<(), LogError> {
 ///
 /// * The line does not contain the expected format, e.g., "n\player_name\t\".
 /// * The extracted player name is empty.
-pub fn process_client_changed_line(line: &str, game: &mut MatchData) -> Result<(), LogError> {
-    if let Some(inicio) = line.find("n\\") {
-        if let Some(fim) = line.find("\\t\\") {
-            let player_name = &line[inicio + 2..fim];
+pub fn process_client_changed_line(line: &str, match_data: &mut MatchData) -> Result<(), LogError> {
+    if let Some(start) = line.find("n\\") {
+        if let Some(end) = line.find("\\t\\") {
+            let player_name = &line[start + 2..end];
 
             if !player_name.is_empty() {
-                game.players.insert(player_name.to_string());
+                match_data.players.insert(player_name.to_string());
             } else {
                 return Err(LogError::EmptyPlayerName(format!(
                     "Empty player name in the client changed line."
@@ -332,12 +310,12 @@ pub fn process_client_changed_line(line: &str, game: &mut MatchData) -> Result<(
     Ok(())
 }
 
-/// Parses a line of the log to extract information about a world kill and updates the game data.
+/// Parses a line of the log to extract information about a world kill and updates the match data.
 ///
 /// # Arguments
 ///
 /// * `line` - A string containing the log line to be parsed.
-/// * `game` - A mutable reference to the `MatchData` struct representing the game state.
+/// * `match_data` - A mutable reference to the `MatchData` struct representing the match state.
 ///
 /// # Returns
 ///
@@ -348,25 +326,22 @@ pub fn process_client_changed_line(line: &str, game: &mut MatchData) -> Result<(
 ///
 /// Returns an error of type `LogError` if any of the following conditions are met:
 ///
-/// * The keyword 'killed' is not found in the kill line.
-/// * The keyword 'by' is not found in the kill line.
-/// * The victim in the kill line is not found in the game's kill data.
-pub fn parse_world_kill(line: &str, game: &mut MatchData) -> Result<(), LogError> {
-    if let Some(inicio) = line.find("killed") {
-        if let Some(fim) = line.find("by") {
-            let victim = &line[inicio + 7..fim - 1];
-            game.kills
-                .entry(victim.to_string())
-                .and_modify(|e| *e -= 1)
-                .or_insert(-1);
-        } else {
-            return Err(LogError::MissingKeyword(format!(
-                "The keyword 'by' was not found in the kill line."
-            )));
-        }
+/// * The victim in the kill line is not found in the matches kill data.
+pub fn parse_world_kill(line: &str, match_data: &mut MatchData) -> Result<(), LogError> {
+    if let Some(victim) = match_data
+        .players
+        .iter()
+        .find(|&victim| line.contains(&format!("<world> killed {} by", victim)))
+        .map(|victim| victim)
+    {
+        match_data
+            .kills
+            .entry(victim.to_owned())
+            .and_modify(|e| *e -= 1)
+            .or_insert(-1);
     } else {
-        return Err(LogError::MissingKeyword(format!(
-            "The keyword 'killed' was not found in the kill line."
+        return Err(LogError::VictimName(format!(
+            "Unable to find the Victim Name"
         )));
     }
 
@@ -376,12 +351,12 @@ pub fn parse_world_kill(line: &str, game: &mut MatchData) -> Result<(), LogError
 /// Parses a line of the log to update kill statistics for a player.
 ///
 /// This function extracts the name of the player who made a kill from the log line and updates
-/// the kill count for that player in the game data.
+/// the kill count for that player in the match data.
 ///
 /// # Arguments
 ///
 /// * `line` - A string containing the log line to be parsed.
-/// * `game` - A mutable reference to the `MatchData` struct representing the game state.
+/// * `match_data` - A mutable reference to the `MatchData` struct representing the match data.
 ///
 /// # Returns
 ///
@@ -392,29 +367,27 @@ pub fn parse_world_kill(line: &str, game: &mut MatchData) -> Result<(), LogError
 ///
 /// Returns an error of type `LogError` if any of the following conditions are met:
 ///
-/// * The third colon (":") expected in the log line is not found.
-/// * The keyword "killed" is not found in the log line.
-pub fn parse_player_kill(line: &str, game: &mut MatchData) -> Result<(), LogError> {
-    if let Some(inicio) = find_third_colon_occurrence(line) {
-        if let Some(fim) = line.find("killed") {
-            let killer = &line[inicio + 2..fim - 1];
-            game.kills
-                .entry(killer.to_string())
-                .and_modify(|e| *e += 1)
-                .or_insert(1);
-        } else {
-            return Err(LogError::MissingKeyword(format!(
-                "The keyword 'killed' was not found in the kill line."
-            )));
-        }
+/// * Unable to find the Killer Name
+pub fn parse_player_kill(line: &str, match_data: &mut MatchData) -> Result<(), LogError> {
+    if let Some(nome) = match_data
+        .players
+        .iter()
+        .find(|&nome| line.contains(&format!("{} killed", nome)))
+        .map(|nome| nome)
+    {
+        match_data
+            .kills
+            .entry(nome.to_string())
+            .and_modify(|e| *e += 1)
+            .or_insert(1);
     } else {
-        return Err(LogError::MissingKeyword(format!(
-            "The third colon was not found in the kill line."
+        return Err(LogError::KillerName(format!(
+            "Unable to find the Killer Name"
         )));
     }
     Ok(())
 }
-/// Inserts or increments the count of kills by means in a game match.
+/// Inserts or increments the count of kills by means in a match.
 ///
 /// This function takes a log line and extracts the "mean" (typically a weapon or cause) of a kill from
 /// the last word of the line. It then attempts to insert this mean into the `kills_by_means` map within
@@ -425,7 +398,7 @@ pub fn parse_player_kill(line: &str, game: &mut MatchData) -> Result<(), LogErro
 ///
 /// * `line` - A string representing the log line containing information about a kill event.
 ///
-/// * `game` - A mutable reference to a `MatchData` struct representing the data of the game match.
+/// * `match_data` - A mutable reference to a `MatchData` struct representing the data of the match.
 ///
 /// # Returns
 ///
@@ -437,7 +410,7 @@ pub fn parse_player_kill(line: &str, game: &mut MatchData) -> Result<(), LogErro
 /// Returns an error of type `LogError` if unable to extract the means in the log line, indicating an issue with the line's formatting.
 ///
 /// Returns an error of type `LogError` if the extracted word is not a valid 'mean'.
-pub fn insert_kills_by_means(line: &str, game: &mut MatchData) -> Result<(), LogError> {
+pub fn insert_kills_by_means(line: &str, match_data: &mut MatchData) -> Result<(), LogError> {
     let last_word = match line.split_whitespace().last() {
         Some(last_word) => last_word,
         None => {
@@ -450,7 +423,8 @@ pub fn insert_kills_by_means(line: &str, game: &mut MatchData) -> Result<(), Log
 
     match MeansOfDeath::from_str(last_word) {
         Some(_) => {
-            game.kills_by_means
+            match_data
+                .kills_by_means
                 .entry(last_word.to_string())
                 .and_modify(|e| *e += 1)
                 .or_insert(1);
@@ -465,9 +439,9 @@ pub fn insert_kills_by_means(line: &str, game: &mut MatchData) -> Result<(), Log
 
     Ok(())
 }
-/// Process a kill line from the game log.
+/// Process a kill line from the match log.
 ///
-/// This function is responsible for processing a line from the game log that represents a kill event.
+/// This function is responsible for processing a line from the match log that represents a kill event.
 /// It determines whether the kill event is a player kill or a kill by the world (e.g., environmental damage).
 /// Depending on the type of kill event, it calls the corresponding parsing function (`parse_world_kill` or
 /// `parse_player_kill`) to extract relevant information about the kill. It also updates the kills statistics
@@ -475,9 +449,9 @@ pub fn insert_kills_by_means(line: &str, game: &mut MatchData) -> Result<(), Log
 ///
 /// # Arguments
 ///
-/// * `line` - A string representing a line from the game log that contains a kill event.
+/// * `line` - A string representing a line from the match log that contains a kill event.
 ///
-/// * `game` - A mutable reference to a `MatchData` struct where kill statistics and means of death information
+/// * `match_data` - A mutable reference to a `MatchData` struct where kill statistics and means of death information
 ///   will be updated.
 ///
 /// # Returns
@@ -488,33 +462,33 @@ pub fn insert_kills_by_means(line: &str, game: &mut MatchData) -> Result<(), Log
 /// # Errors
 ///
 /// Returns an error of type `LogError` if there are any issues with processing the kill event or updating
-/// the game data.
-pub fn process_kill_line(line: &str, game: &mut MatchData) -> Result<(), LogError> {
+/// the match data.
+pub fn process_kill_line(line: &str, match_data: &mut MatchData) -> Result<(), LogError> {
     match line {
-        _ if line.contains("<world>") => {
-            if let Err(err) = parse_world_kill(line, game) {
+        _ if line.contains("<world> killed") => {
+            if let Err(err) = parse_world_kill(line, match_data) {
                 return Err(err);
             }
         }
         _ => {
-            if let Err(err) = parse_player_kill(line, game) {
+            if let Err(err) = parse_player_kill(line, match_data) {
                 return Err(err);
             }
         }
     };
 
-    if let Err(err) = insert_kills_by_means(line, game) {
+    if let Err(err) = insert_kills_by_means(line, match_data) {
         return Err(err);
     }
 
-    game.total_kills += 1;
+    match_data.total_kills += 1;
 
     Ok(())
 }
 
-/// Process player rankings based on game match data.
+/// Process player rankings based on match data.
 ///
-/// This function calculates and updates player rankings based on the provided game match data. It takes
+/// This function calculates and updates player rankings based on the provided match data. It takes
 /// a mutable reference to a vector of `Match` structs and a mutable reference to a vector of `PlayerScore`
 /// structs. Player rankings are updated with the total number of kills achieved by each player across all
 /// matches. If a player is already in the ranking, their score is updated; otherwise, a new entry is added
@@ -522,7 +496,7 @@ pub fn process_kill_line(line: &str, game: &mut MatchData) -> Result<(), LogErro
 ///
 /// # Arguments
 ///
-/// * `matches` - A mutable reference to a vector of `Match` structs containing game match data.
+/// * `matches` - A mutable reference to a vector of `Match` structs containing match data.
 ///
 /// * `ranking` - A mutable reference to a vector of `PlayerScore` structs representing player rankings.
 pub fn process_ranking(matches: &mut Vec<Match>, ranking: &mut Vec<PlayerScore>) {
